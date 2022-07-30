@@ -1,6 +1,6 @@
-import { loadStdlib } from "@reach-sh/stdlib";
-import * as backend from "./build/index.main.mjs";
-const stdlib = loadStdlib();
+import { loadStdlib } from '@reach-sh/stdlib';
+import * as backend from './build/index.main.mjs';
+const stdlib = loadStdlib(process.env);
 
 const startingBalance = stdlib.parseCurrency(100);
 const accAlice = await stdlib.newTestAccount(startingBalance);
@@ -14,10 +14,10 @@ const beforeBob = await getBalance(accBob);
 const ctcAlice = accAlice.contract(backend);
 const ctcBob = accBob.contract(backend, ctcAlice.getInfo());
 
-const HAND = ["Rock", "Paper", "Scissors"];
-const OUTCOME = ["Bob wins", "Draw", "Alice wins"];
+const HAND = ['Rock', 'Paper', 'Scissors'];
+const OUTCOME = ['Bob wins', 'Draw', 'Alice wins'];
 const Player = (Who) => ({
-  ...stdlib.hasRandom, // <--- new!
+  ...stdlib.hasRandom,
   getHand: () => {
     const hand = Math.floor(Math.random() * 3);
     console.log(`${Who} played ${HAND[hand]}`);
@@ -26,17 +26,28 @@ const Player = (Who) => ({
   seeOutcome: (outcome) => {
     console.log(`${Who} saw outcome ${OUTCOME[outcome]}`);
   },
+  informTimeout: () => {
+    console.log(`${Who} observed a timeout`);
+  },
 });
 
 await Promise.all([
   ctcAlice.p.Alice({
-    ...Player("Alice"),
+    ...Player('Alice'),
     wager: stdlib.parseCurrency(5),
+    deadline: 10,
   }),
   ctcBob.p.Bob({
-    ...Player("Bob"),
-    acceptWager: (amt) => {
-      console.log(`Bob accepts the wager of ${fmt(amt)}.`);
+    ...Player('Bob'),
+    acceptWager: async (amt) => { // <-- async now
+      if ( Math.random() <= 0.5 ) {
+        for ( let i = 0; i < 10; i++ ) {
+          console.log(`  Bob takes his sweet time...`);
+          await stdlib.wait(1);
+        }
+      } else {
+        console.log(`Bob accepts the wager of ${fmt(amt)}.`);
+      }
     },
   }),
 ]);
